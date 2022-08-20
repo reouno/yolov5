@@ -25,6 +25,7 @@ Usage - formats:
 """
 
 import argparse
+import ffmpeg
 import os
 import platform
 import sys
@@ -196,12 +197,17 @@ def run(
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         else:  # stream
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
-                        save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        tmp_save_path = str(Path(save_path).with_suffix('.avi'))
+                        vid_writer[i] = cv2.VideoWriter(tmp_save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
         LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
+
+    if dataset.mode != 'image':
+        # Encode to H.264 with FFmpeg
+        save_path = str(Path(save_path).with_suffix('.mp4'))
+        ffmpeg.input(tmp_save_path).output(save_path, vcodec='h264').run(overwrite_output=True, cmd='/usr/bin/ffmpeg')
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
